@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>坐标调试工具</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        .upload-area {
+            border: 2px dashed #667eea;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .upload-area:hover { background: #f8f9ff; }
+        #canvas-container {
+            position: relative;
+            display: inline-block;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+        #screenshot {
+            max-width: 100%;
+            display: block;
+        }
+        .overlay {
+            position: absolute;
+            border: 2px solid red;
+            background: rgba(255,0,0,0.1);
+            pointer-events: none;
+        }
+        .info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .coords {
+            font-family: monospace;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5568d3; }
+        .config-section {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .config-section h3 { margin-top: 0; }
+        pre {
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 微信视频号坐标调试工具</h1>
+
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <h3>点击或拖拽上传截图</h3>
+            <p>支持 PNG, JPG 格式</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <div id="canvas-container" style="display: none;">
+            <img id="screenshot" alt="截图">
+            <div id="overlay-title" class="overlay" style="border-color: blue; background: rgba(0,0,255,0.1);"></div>
+            <div id="overlay-likes" class="overlay" style="border-color: green; background: rgba(0,255,0,0.1);"></div>
+            <div id="overlay-comments" class="overlay" style="border-color: orange; background: rgba(255,165,0,0.1);"></div>
+            <div id="overlay-favorites" class="overlay" style="border-color: purple; background: rgba(128,0,128,0.1);"></div>
+            <div id="overlay-shares" class="overlay" style="border-color: red; background: rgba(255,0,0,0.1);"></div>
+        </div>
+
+        <div class="info" id="coordsInfo" style="display: none;">
+            <h3>点击截图获取坐标</h3>
+            <div class="coords" id="clickCoords">X: - Y: -</div>
+        </div>
+
+        <div class="config-section">
+            <h3>⚙️ 当前配置</h3>
+            <pre id="configDisplay">
+{
+  "titleArea": {
+    "x": 50, "y": 150, "w": 980, "h": 100
+  },
+  "statsBar": {
+    "y": 2200,
+    "items": [
+      { "name": "likes", "x": 50, "y": 2200, "w": 160, "h": 200 },
+      { "name": "comments", "x": 250, "y": 2200, "w": 160, "h": 200 },
+      { "name": "favorites", "x": 450, "y": 2200, "w": 160, "h": 200 },
+      { "name": "shares", "x": 650, "y": 2200, "w": 160, "h": 200 }
+    ]
+  }
+}
+            </pre>
+        </div>
+
+        <div>
+            <button onclick="updateOverlays()">🔄 更新区域显示</button>
+            <button onclick="exportConfig()">📥 导出配置</button>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const screenshot = document.getElementById('screenshot');
+        const canvasContainer = document.getElementById('canvas-container');
+        const coordsInfo = document.getElementById('coordsInfo');
+        const clickCoords = document.getElementById('clickCoords');
+
+        let currentConfig = {
+            titleArea: { x: 50, y: 150, w: 980, h: 100 },
+            statsBar: {
+                y: 2200,
+                items: [
+                    { name: 'likes', x: 50, y: 2200, w: 160, h: 200 },
+                    { name: 'comments', x: 250, y: 2200, w: 160, h: 200 },
+                    { name: 'favorites', x: 450, y: 2200, w: 160, h: 200 },
+                    { name: 'shares', x: 650, y: 2200, w: 160, h: 200 }
+                ]
+            }
+        };
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    screenshot.src = event.target.result;
+                    screenshot.onload = () => {
+                        canvasContainer.style.display = 'inline-block';
+                        coordsInfo.style.display = 'block';
+                        updateOverlays();
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        screenshot.addEventListener('click', (e) => {
+            const rect = screenshot.getBoundingClientRect();
+            const scaleX = screenshot.naturalWidth / rect.width;
+            const scaleY = screenshot.naturalHeight / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            clickCoords.textContent = `X: ${x}  Y: ${y}`;
+        });
+
+        function updateOverlays() {
+            const scale = screenshot.clientWidth / screenshot.naturalWidth;
+
+            // 标题区域
+            const titleOverlay = document.getElementById('overlay-title');
+            titleOverlay.style.left = (currentConfig.titleArea.x * scale) + 'px';
+            titleOverlay.style.top = (currentConfig.titleArea.y * scale) + 'px';
+            titleOverlay.style.width = (currentConfig.titleArea.w * scale) + 'px';
+            titleOverlay.style.height = (currentConfig.titleArea.h * scale) + 'px';
+
+            // 数据项
+            currentConfig.statsBar.items.forEach((item, index) => {
+                const overlay = document.getElementById(`overlay-${item.name}`);
+                if (overlay) {
+                    overlay.style.left = (item.x * scale) + 'px';
+                    overlay.style.top = (item.y * scale) + 'px';
+                    overlay.style.width = (item.w * scale) + 'px';
+                    overlay.style.height = (item.h * scale) + 'px';
+                }
+            });
+        }
+
+        function exportConfig() {
+            const configStr = JSON.stringify(currentConfig, null, 2);
+            const blob = new Blob([configStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'positions.json';
+            a.click();
+        }
+    </script>
+</body>
+</html>

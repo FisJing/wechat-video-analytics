@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频数据收集 - 微信视频号</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header h1 { color: #333; font-size: 24px; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 10px; width: 100%; }
+        .nav-tab {
+            padding: 8px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .nav-tab:not(.active) {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .nav-tab:not(.active):hover {
+            background: #e0e0e0;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse 2s infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1200px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .card-title { font-size: 18px; font-weight: bold; color: #333; }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-select:focus, .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* 数据表格 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* 账号选择 */
+        .account-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .account-btn {
+            padding: 15px 30px;
+            border: 2px solid #667eea;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .account-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+        .account-btn:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+
+        /* 日志区域 */
+        .log-area {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        /* 图表容器 */
+        #chartContainer {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="nav-tabs">
+                <a href="http://localhost:3000" class="nav-tab">📺 视频发布</a>
+                <a href="http://localhost:3001" class="nav-tab">👍 点赞互动</a>
+                <a href="http://localhost:3002" class="nav-tab active">📊 视频收集</a>
+            </div>
+            <h1>📊 视频数据收集</h1>
+            <div><span class="status-indicator"></span>服务运行中</div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalVideos">0</div>
+                <div class="stat-label">总视频数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalLikes">0</div>
+                <div class="stat-label">总点赞数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalComments">0</div>
+                <div class="stat-label">总评论数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="deviceCount">0</div>
+                <div class="stat-label">在线设备</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="lastUpdate">-</div>
+                <div class="stat-label">最后更新</div>
+            </div>
+        </div>
+
+        <!-- 设备管理 -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+                <h3 class="card-title">📱 设备管理</h3>
+                <button class="btn btn-primary" onclick="refreshDevices()">🔄 刷新设备</button>
+            </div>
+            <div id="deviceList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                <div style="text-align: center; color: #999; padding: 20px;">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 编辑设备名称模态框 -->
+        <div id="editDeviceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+            <div style="background: white; border-radius: 10px; padding: 30px; max-width: 500px; width: 90%;">
+                <h3 style="margin-bottom: 20px;">✏️ 编辑设备名称</h3>
+                <input type="hidden" id="editDeviceId">
+                <div class="form-group">
+                    <label class="form-label">设备名称</label>
+                    <input type="text" class="form-input" id="editDeviceName" placeholder="输入设备名称">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">备注信息</label>
+                    <input type="text" class="form-input" id="editDeviceDesc" placeholder="输入备注信息">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn" style="background: #f0f0f0;" onclick="closeEditModal()">取消</button>
+                    <button class="btn btn-primary" onclick="saveDeviceName()">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 创建抓取任务 -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+                <h3 class="card-title">🎯 创建抓取任务</h3>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label class="form-label">选择设备</label>
+                    <select class="form-select" id="deviceSelect">
+                        <option value="">请选择设备</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">微信类型</label>
+                    <select class="form-select" id="wechatType">
+                        <option value="0">机主微信</option>
+                        <option value="999">微信分身</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">抓取个数</label>
+                    <select class="form-select" id="videoCount">
+                        <option value="5">5个视频</option>
+                        <option value="10" selected>10个视频</option>
+                        <option value="20">20个视频</option>
+                        <option value="30">30个视频</option>
+                        <option value="50">50个视频</option>
+                        <option value="100">100个视频</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 选项 -->
+            <div style="margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="keepScreenshots" style="width: 18px; height: 18px; margin-right: 10px;">
+                    <span style="font-size: 14px; color: #555;">
+                        📸 保留截图文件（默认自动清理截图，勾选后保留在当前目录）
+                    </span>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="startFetch()" id="fetchBtn">
+                    ▶️ 开始抓取
+                </button>
+                <button class="btn btn-danger" onclick="stopFetch()" id="stopBtn" disabled>
+                    ⏹️ 停止抓取
+                </button>
+                <button class="btn btn-success" onclick="refreshData()">
+                    🔄 刷新数据
+                </button>
+            </div>
+
+            <!-- 抓取进度 -->
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div style="margin-bottom: 10px;">
+                    <span id="progressText">准备中...</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- 日志输出 -->
+            <div class="log-area" id="logArea" style="display: none;"></div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 数据表格 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">视频数据列表</h3>
+                    <button class="btn btn-primary" onclick="exportData()">📥 导出Excel</button>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>视频标题</th>
+                                <th>点赞</th>
+                                <th>评论</th>
+                                <th>推荐</th>
+                                <th>转发</th>
+                                <th>播放</th>
+                                <th>审核状态</th>
+                                <th>抓取时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <tr><td colspan="9" style="text-align: center; color: #999;">暂无数据</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 数据图表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">数据趋势图</h3>
+                </div>
+                <div id="chartContainer"></div>
+            </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <h3 class="card-title">抓取历史</h3>
+            </div>
+            <div id="historyContainer">
+                <p style="color: #999;">暂无历史记录</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentData = null;
+        let chart = null;
+
+        // 初始化图表
+        function initChart() {
+            chart = echarts.init(document.getElementById('chartContainer'));
+            const option = {
+                title: { text: '视频数据统计' },
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['点赞', '评论', '推荐'] },
+                xAxis: { type: 'category', data: [] },
+                yAxis: { type: 'value' },
+                series: [
+                    { name: '点赞', type: 'bar', data: [] },
+                    { name: '评论', type: 'bar', data: [] },
+                    { name: '推荐', type: 'bar', data: [] }
+                ]
+            };
+            chart.setOption(option);
+        }
+
+        // 刷新设备列表
+        async function refreshDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                const result = await response.json();
+
+                if (result.success && result.devices) {
+                    const deviceList = document.getElementById('deviceList');
+                    const deviceCount = result.devices.length;
+
+                    document.getElementById('deviceCount').textContent = deviceCount;
+
+                    // 更新设备列表显示
+                    if (deviceCount === 0) {
+                        deviceList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px; grid-column: 1/-1;">暂无在线设备</div>';
+                    } else {
+                        deviceList.innerHTML = result.devices.map(device => `
+                            <div style="background: #f8f9fa; border-radius: 10px; padding: 15px; border-left: 4px solid #4caf50; position: relative;">
+                                <button onclick="editDeviceName('${device.id}', '${device.name || ''}', '')"
+                                        style="position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.6;"
+                                        title="编辑名称">✏️</button>
+                                <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
+                                    📱 ${device.name || device.id}
+                                </div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">
+                                    ID: ${device.id}
+                                </div>
+                                <div style="font-size: 12px; color: ${device.status === 'online' ? '#4caf50' : '#f44336'};">
+                                    状态: ${device.status === 'online' ? '✅ 在线' : '❌ 离线'}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    // 更新设备选择下拉菜单
+                    const deviceSelect = document.getElementById('deviceSelect');
+                    if (deviceSelect) {
+                        deviceSelect.innerHTML = '<option value="">请选择设备</option>';
+                        result.devices.forEach(device => {
+                            if (device.status === 'online') {
+                                const option = document.createElement('option');
+                                option.value = device.id;
+                                option.textContent = `${device.name} (${device.id})`;
+                                deviceSelect.appendChild(option);
+                            }
+                        });
+                    }
+                } else {
+                    document.getElementById('deviceList').innerHTML = '<div style="text-align: center; color: #f44336; padding: 20px; Grid-column: 1/-1;">' + (result.error || '获取设备失败') + '</div>';
+                }
+            } catch (error) {
+                console.error('刷新设备失败:', error);
+                document.getElementById('deviceList').innerHTML = '<div style="text-align: center; color: #f44336; padding: 20px; grid-column: 1/-1;">连接失败</div>';
+            }
+        }
+
+        // 编辑设备名称
+        function editDeviceName(deviceId, currentName, currentDesc) {
+            document.getElementById('editDeviceId').value = deviceId;
+            document.getElementById('editDeviceName').value = currentName || '';
+            document.getElementById('editDeviceDesc').value = currentDesc || '';
+            document.getElementById('editDeviceModal').style.display = 'flex';
+        }
+
+        // 关闭编辑模态框
+        function closeEditModal() {
+            document.getElementById('editDeviceModal').style.display = 'none';
+        }
+
+        // 保存设备名称
+        async function saveDeviceName() {
+            const deviceId = document.getElementById('editDeviceId').value;
+            const name = document.getElementById('editDeviceName').value;
+            const desc = document.getElementById('editDeviceDesc').value;
+
+            try {
+                const response = await fetch(`/api/device-config/${encodeURIComponent(deviceId)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        alias: name,
+                        description: desc
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('设备名称已更新');
+                    closeEditModal();
+                    refreshDevices(); // 刷新设备列表
+                } else {
+                    alert('保存失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('保存设备名称失败:', error);
+                alert('保存失败: ' + error.message);
+            }
+        }
+
+        // 刷新数据
+        async function refreshData() {
+            try {
+                // 先尝试获取新批量抓取的数据
+                const batchResponse = await fetch('/api/batch-data');
+                const batchResult = await batchResponse.json();
+
+                if (batchResult.success && batchResult.count > 0) {
+                    // 如果有新数据，使用新数据
+                    const newData = {
+                        batch: {
+                            count: batchResult.count,
+                            data: batchResult.data.map(v => ({
+                                '序号': v.videoIndex,
+                                '视频标题': v.videoTitle || '未识别',
+                                '播放': v.playCount || 0,
+                                '完播率': v.playCompleteRate || '0%',
+                                '点赞': v.likeCount || 0,
+                                '评论': v.commentCount || 0,
+                                '推荐': v.recommendCount || 0,
+                                '转发': v.shareCount || 0,
+                                '审核状态': v.reviewStatus || '正常',
+                                '抓取时间': v.captureTime
+                            })),
+                            updateTime: new Date().toISOString()
+                        }
+                    };
+                    currentData = newData;
+                    updateUI(true); // 使用新数据格式
+                } else {
+                    // 如果没有新数据，获取旧数据
+                    const response = await fetch('/api/stats');
+                    const result = await response.json();
+
+                    if (result.success) {
+                        currentData = result.data;
+                        updateUI(false); // 使用旧数据格式
+                    } else {
+                        alert('获取数据失败: ' + result.error);
+                    }
+                }
+            } catch (error) {
+                console.error('刷新数据失败:', error);
+            }
+        }
+
+        // 更新UI
+        function updateUI(isNewData = false) {
+            let videos = [];
+            let updateTime = new Date();
+
+            if (isNewData) {
+                // 新数据格式
+                if (!currentData || !currentData.batch) {
+                    document.getElementById('totalVideos').textContent = '0';
+                    document.getElementById('totalLikes').textContent = '0';
+                    document.getElementById('totalComments').textContent = '0';
+                    document.getElementById('lastUpdate').textContent = '-';
+                    return;
+                }
+
+                const data = currentData.batch;
+                videos = data.data;
+                updateTime = new Date(data.updateTime);
+            } else {
+                // 旧数据格式
+                const wechatType = document.getElementById('wechatType')?.value || '0';
+                const account = wechatType === '999' ? 'xin' : 'zheng';
+
+                if (!currentData || !currentData[account]) {
+                    document.getElementById('totalVideos').textContent = '0';
+                    document.getElementById('totalLikes').textContent = '0';
+                    document.getElementById('totalComments').textContent = '0';
+                    document.getElementById('lastUpdate').textContent = '-';
+                    return;
+                }
+
+                const data = currentData[account];
+                videos = data.data;
+                updateTime = new Date(data.updateTime);
+            }
+
+            // 更新统计卡片
+            document.getElementById('totalVideos').textContent = videos.length;
+            document.getElementById('totalLikes').textContent = videos.reduce((sum, v) => sum + (v['点赞'] || 0), 0).toLocaleString();
+            document.getElementById('totalComments').textContent = videos.reduce((sum, v) => sum + (v['评论'] || 0), 0).toLocaleString();
+            document.getElementById('lastUpdate').textContent = updateTime.toLocaleString('zh-CN');
+
+            // 更新数据表格
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = videos.map(v => {
+                const reviewStatus = v['审核状态'] || '正常';
+                const isRejected = reviewStatus === '审核不过关';
+                const rowStyle = isRejected ? 'background-color: #fff3cd;' : '';
+                const statusStyle = isRejected ? 'color: #d32f2f; font-weight: bold;' : 'color: #4caf50;';
+
+                return `
+                <tr style="${rowStyle}">
+                    <td>${v['序号'] || '-'}</td>
+                    <td style="font-size: 13px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v['视频标题'] || '未识别'}">${v['视频标题'] || '未识别'}</td>
+                    <td>${v['点赞'] || 0}</td>
+                    <td>${v['评论'] || 0}</td>
+                    <td>${v['推荐'] || 0}</td>
+                    <td>${v['转发'] || 0}</td>
+                    <td>${v['播放'] || 0}</td>
+                    <td style="${statusStyle}">${reviewStatus}</td>
+                    <td style="font-size: 12px;">${new Date(v['抓取时间']).toLocaleString('zh-CN')}</td>
+                </tr>
+            `}).join('');
+
+            // 更新图表
+            updateChart(videos);
+        }
+
+        // 更新图表
+        function updateChart(videos) {
+            const labels = videos.map((v, i) => (v['视频标题'] || `视频${i + 1}`).substring(0, 15));
+            const likes = videos.map(v => v['点赞'] || 0);
+            const comments = videos.map(v => v['评论'] || 0);
+            const recommendations = videos.map(v => v['推荐'] || 0);
+
+            chart.setOption({
+                xAxis: {
+                    data: labels,
+                    axisLabel: {
+                        interval: 0,
+                        rotate: 30,
+                        fontSize: 10
+                    }
+                },
+                series: [
+                    { data: likes },
+                    { data: comments },
+                    { data: recommendations }
+                ]
+            });
+        }
+
+        // 开始抓取
+        async function startFetch() {
+            const deviceId = document.getElementById('deviceSelect').value;
+            const wechatType = document.getElementById('wechatType').value;
+            const videoCount = document.getElementById('videoCount').value;
+            const keepScreenshots = document.getElementById('keepScreenshots').checked;
+
+            if (!deviceId) {
+                alert('请选择设备');
+                return;
+            }
+
+            const btn = document.getElementById('fetchBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 抓取中...';
+            stopBtn.disabled = false;
+
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('logArea').style.display = 'block';
+            document.getElementById('logArea').innerHTML = '';
+
+            try {
+                const account = wechatType === '999' ? 'xin' : 'zheng';
+                const response = await fetch(`/api/fetch/${account}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        deviceId: deviceId,
+                        wechatType: parseInt(wechatType),
+                        videoCount: parseInt(videoCount),
+                        keepScreenshots: keepScreenshots
+                    })
+                });
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert('启动抓取失败: ' + result.error);
+                    btn.disabled = false;
+                    btn.textContent = '▶️ 开始抓取';
+                    stopBtn.disabled = true;
+                }
+            } catch (error) {
+                console.error('启动抓取失败:', error);
+                btn.disabled = false;
+                btn.textContent = '▶️ 开始抓取';
+                stopBtn.disabled = true;
+            }
+        }
+
+        // 停止抓取
+        async function stopFetch() {
+            try {
+                const response = await fetch('/api/stop', { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    const btn = document.getElementById('fetchBtn');
+                    const stopBtn = document.getElementById('stopBtn');
+                    btn.disabled = false;
+                    btn.textContent = '▶️ 开始抓取';
+                    stopBtn.disabled = true;
+                    addLog('[停止] 任务已停止', 'info');
+                } else {
+                    alert('停止失败: ' + result.error);
+                }
+            } catch (error) {
+                console.error('停止抓取失败:', error);
+            }
+        }
+
+        // 导出数据
+        function exportData() {
+            // 检查是否有批量抓取的新数据
+            if (currentData && currentData.batch && currentData.batch.count > 0) {
+                // 下载CSV文件
+                window.open('/api/download-csv');
+            } else if (currentData && (currentData.xin || currentData.zheng)) {
+                // 兼容旧数据格式
+                const wechatType = document.getElementById('wechatType')?.value || '0';
+                const account = wechatType === '999' ? 'xin' : 'zheng';
+
+                if (currentData[account]) {
+                    window.open(`/output/${account}/${currentData[account].file}`);
+                } else {
+                    alert('暂无数据可导出');
+                }
+            } else {
+                alert('暂无数据可导出，请先抓取视频数据');
+            }
+        }
+
+        // WebSocket 事件
+        socket.on('fetch-start', (data) => {
+            document.getElementById('progressText').textContent = '开始抓取...';
+            document.getElementById('progressFill').style.width = '0%';
+            addLog('[开始] 抓取任务启动');
+        });
+
+        socket.on('fetch-log', (data) => {
+            addLog(data.data);
+            updateProgress(data.data);
+        });
+
+        socket.on('fetch-error', (data) => {
+            addLog('[错误] ' + data.error, 'error');
+        });
+
+        socket.on('fetch-complete', (data) => {
+            const btn = document.getElementById('fetchBtn');
+            btn.disabled = false;
+            btn.textContent = '🚀 开始抓取';
+
+            document.getElementById('progressText').textContent = '抓取完成!';
+            document.getElementById('progressFill').style.width = '100%';
+
+            addLog('[完成] 抓取任务结束');
+
+            // 刷新数据
+            setTimeout(refreshData, 1000);
+        });
+
+        // 添加日志
+        function addLog(text, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const time = new Date().toLocaleTimeString('zh-CN');
+            const color = type === 'error' ? '#f44336' : '#0f0';
+            logArea.innerHTML += `<div style="color: ${color}">[${time}] ${text}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // 更新进度
+        function updateProgress(log) {
+            if (log.includes('阶段1')) {
+                document.getElementById('progressFill').style.width = '25%';
+                document.getElementById('progressText').textContent = '阶段1: 导航到个人主页';
+            } else if (log.includes('阶段2')) {
+                document.getElementById('progressFill').style.width = '50%';
+                document.getElementById('progressText').textContent = '阶段2: 扫描视频列表';
+            } else if (log.includes('阶段3')) {
+                document.getElementById('progressFill').style.width = '75%';
+                document.getElementById('progressText').textContent = '阶段3: 提取视频数据';
+            } else if (log.includes('阶段4')) {
+                document.getElementById('progressFill').style.width = '90%';
+                document.getElementById('progressText').textContent = '阶段4: 保存数据';
+            }
+        }
+
+        // 页面加载时初始化
+        window.onload = function() {
+            console.log('[页面加载] 初始化开始');
+            initChart();
+            refreshData();
+            refreshDevices();
+            console.log('[页面加载] 初始化完成');
+        };
+
+        // 额外的调试：延迟1秒再次调用，确保执行
+        setTimeout(() => {
+            console.log('[延迟调用] 刷新设备');
+            refreshDevices();
+        }, 1000);
+    </script>
+</body>
+</html>

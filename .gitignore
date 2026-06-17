@@ -1,0 +1,66 @@
+# 依赖
+node_modules/
+package-lock.json
+
+# 配置文件（包含敏感信息）
+baidu-ocr.config.json
+config/device-config.json
+config/*.json
+
+# 输出数据
+output/
+*.json
+!package.json
+!package-lock.json
+
+# 临时文件
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.log
+*.tmp
+*.flow
+*.xml
+temp_*
+video_*
+
+# OCR训练数据（太大，不上传）
+*.traineddata
+
+# 证书文件
+*.cer
+*.pem
+*.key
+
+# 压缩包
+*.zip
+*.tar.gz
+*.rar
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# 测试文件
+test-*.js
+debug-*.js
+
+# 批处理脚本（包含本地路径）
+*.bat
+!start.bat.example
+
+# PowerShell脚本（包含本地路径）
+*.ps1
+
+# 其他项目目录
+mitmproxy/
+mitmproxy-windows.zip

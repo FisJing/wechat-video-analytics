@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>设备测试</title>
+</head>
+<body>
+    <h1>设备管理测试</h1>
+    <div id="deviceList">加载中...</div>
+    <button onclick="refreshDevices()">刷新设备</button>
+
+    <script>
+        async function refreshDevices() {
+            try {
+                console.log('开始获取设备...');
+                const response = await fetch('/api/devices');
+                const result = await response.json();
+                console.log('API返回:', result);
+
+                if (result.success && result.devices) {
+                    const deviceList = document.getElementById('deviceList');
+                    console.log('设备数量:', result.devices.length);
+
+                    if (result.devices.length === 0) {
+                        deviceList.innerHTML = '暂无在线设备';
+                    } else {
+                        deviceList.innerHTML = result.devices.map(device =>
+                            `<div>📱 ${device.name} (${device.id}) - ${device.status}</div>`
+                        ).join('');
+                    }
+                } else {
+                    document.getElementById('deviceList').innerHTML = '获取失败: ' + (result.error || '未知错误');
+                }
+            } catch (error) {
+                console.error('错误:', error);
+                document.getElementById('deviceList').innerHTML = '连接失败: ' + error.message;
+            }
+        }
+
+        // 页面加载时自动获取
+        window.onload = refreshDevices;
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+@echo off
+REM 微信视频数据抓取系统 - 启动脚本示例
+REM 请复制此文件为 start.bat 并修改设备IP地址
+
+echo ========================================
+echo   微信视频数据抓取系统
+echo ========================================
+echo.
+
+REM 设置设备IP地址（请修改为您的设备IP）
+set DEVICE_IP=192.168.31.163
+set DEVICE_PORT=5555
+
+echo 正在连接设备 %DEVICE_IP%:%DEVICE_PORT%...
+adb connect %DEVICE_IP%:%DEVICE_PORT%
+
+echo.
+echo 启动Web服务器...
+node web-server/server-stats.js
+
+pause

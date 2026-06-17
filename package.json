@@ -1,0 +1,28 @@
+{
+  "name": "wechat-video-stats",
+  "version": "1.0.0",
+  "description": "微信视频号数据抓取系统",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "fetch:xin": "node src/index.js --account xin",
+    "fetch:zheng": "node src/index.js --account zheng",
+    "web": "node web-server/server-stats.js"
+  },
+  "keywords": [
+    "wechat",
+    "video",
+    "stats",
+    "adb"
+  ],
+  "author": "Lremi",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.18.0",
+    "express": "^5.2.1",
+    "jimp": "^0.22.0",
+    "socket.io": "^4.8.3",
+    "tesseract.js": "^5.0.0",
+    "xlsx": "^0.18.5"
+  }
+}
