@@ -34,10 +34,38 @@ let fetchProcess = null;
 
 // ============ API 接口 ============
 
-// 获取设备列表（直接从ADB获取）
+// 获取设备列表（从视频发布系统获取配置）
 app.get('/api/devices', async (req, res) => {
     try {
         const { exec } = require('child_process');
+        const http = require('http');
+
+        // 先从视频发布系统获取设备配置
+        const deviceConfig = await new Promise((resolve) => {
+            const options = {
+                hostname: 'localhost',
+                port: 3000,
+                path: '/api/device-config',
+                method: 'GET',
+                timeout: 3000
+            };
+
+            const request = http.request(options, (response) => {
+                let data = '';
+                response.on('data', (chunk) => { data += chunk; });
+                response.on('end', () => {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        resolve({});
+                    }
+                });
+            });
+
+            request.on('error', () => resolve({}));
+            request.on('timeout', () => { request.destroy(); resolve({}); });
+            request.end();
+        });
 
         exec('adb devices -l', (error, stdout, stderr) => {
             if (error) {
@@ -65,15 +93,8 @@ app.get('/api/devices', async (req, res) => {
                         }
                     }
 
-                    // 设备别名映射
-                    let alias = '';
-                    if (deviceId.includes('192.168.31.163')) {
-                        alias = '资产13';
-                    } else if (deviceId.includes('192.168.31.167')) {
-                        alias = '资产5';
-                    } else if (deviceId.startsWith('adb-')) {
-                        alias = deviceId.split('-')[1].split('.')[0];
-                    }
+                    // 从视频发布系统配置获取别名
+                    let alias = deviceConfig[deviceId]?.alias || '';
 
                     devices.push({
                         id: deviceId,
