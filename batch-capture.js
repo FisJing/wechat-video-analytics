@@ -322,30 +322,45 @@ class VideoBatchCapture {
             }
 
             // 互动数据
+            // 微信视频号界面格式：
+            // 情况A: "互动数据\n图标\nX人点赞了你的视频，推荐给了Y个朋友\nX\nY"
+            // 情况B: "互动数据\n图标\nX\nY\n评论"
             if (line.includes('互动') && line.includes('数据')) {
                 if (i + 2 < lines.length) {
                     const dataLine1 = lines[i + 2].trim();
-                    const parts1 = dataLine1.split(/\s+/);
 
-                    // 点赞数据
-                    if (parts1.length >= 1) {
-                        data.likeCount = this.parseNumber(parts1[0]);
-                    }
+                    // 检查是否包含"人"和"推荐"关键字
+                    if (dataLine1.includes('人') && dataLine1.includes('推荐')) {
+                        // 情况A: "36人点赞了你的视频，推荐给了83个朋友"
+                        // 提取点赞数（X人）
+                        const likeMatch = dataLine1.match(/(\d+)人/);
+                        if (likeMatch) {
+                            data.likeCount = this.parseNumber(likeMatch[1]);
+                        }
 
-                    // 情况A：点赞和推荐在同一行（如 "1  2"）
-                    if (parts1.length >= 2) {
-                        data.recommendCount = this.parseNumber(parts1[1]);
-                    }
-                    // 情况B：点赞和推荐分开两行（如 "1" 然后 "1"）
-                    else if (i + 3 < lines.length) {
-                        const dataLine2 = lines[i + 3].trim();
-                        const parts2 = dataLine2.split(/\s+/);
+                        // 提取推荐数（推荐给了X个朋友）
+                        const recommendMatch = dataLine1.match(/推荐给了(\d+)个/);
+                        if (recommendMatch) {
+                            data.recommendCount = this.parseNumber(recommendMatch[1]);
+                        }
+                    } else {
+                        // 情况B: 直接是数字
+                        const parts1 = dataLine1.split(/\s+/);
 
-                        // 检查下一行是否是数字（推荐数据）
-                        if (parts2.length >= 1 && parts2[0].match(/^\d+/)) {
-                            // 检查这行不是"评论"等关键词
-                            if (!dataLine2.includes('评论') && !dataLine2.includes('新增')) {
-                                data.recommendCount = this.parseNumber(parts2[0]);
+                        if (parts1.length >= 1) {
+                            data.likeCount = this.parseNumber(parts1[0]);
+                        }
+
+                        // 检查下一行是否是推荐数
+                        if (i + 3 < lines.length) {
+                            const dataLine2 = lines[i + 3].trim();
+                            const parts2 = dataLine2.split(/\s+/);
+
+                            // 检查下一行是否是数字且不是"评论"等关键词
+                            if (parts2.length >= 1 && parts2[0].match(/^\d+/)) {
+                                if (!dataLine2.includes('评论') && !dataLine2.includes('新增')) {
+                                    data.recommendCount = this.parseNumber(parts2[0]);
+                                }
                             }
                         }
                     }
@@ -506,10 +521,15 @@ class VideoBatchCapture {
                     return;
                 }
 
-                // 步骤8: 截图并识别
-                console.log('【步骤8】等待标题完全加载（5秒）...');
-                await this.sleep(5000); // 确保标题完全渲染（特别是长标题）
-                console.log('【步骤8】截图并OCR识别...');
+                // 步骤8: 滚动到互动数据区域
+                console.log('【步骤8】滚动到互动数据区域...');
+                await this.swipe(540, 1800, 540, 800); // 向上滑动，显示下方数据
+                await this.sleep(2000);
+
+                // 步骤9: 截图并识别
+                console.log('【步骤9】等待数据加载（3秒）...');
+                await this.sleep(3000); // 确保数据完全渲染
+                console.log('【步骤9】截图并OCR识别...');
                 const screenshotFile = `video_${this.videoIndex}.png`;
                 await this.screenshot(screenshotFile);
 
@@ -521,11 +541,11 @@ class VideoBatchCapture {
                 console.log(`✓ 点赞: ${data.likeCount}, 评论: ${data.commentCount}, 推荐: ${data.recommendCount}`);
                 console.log(`✓ 审核状态: ${data.reviewStatus}`);
 
-                // 步骤9: 返回
-                console.log('【步骤9】返回视频列表...');
+                // 步骤10: 返回
+                console.log('【步骤10】返回视频列表...');
                 await this.tap(50, 180);
 
-                // 步骤10: 滑动到下一个视频
+                // 步骤11: 滑动到下一个视频
                 if (i < this.maxVideos - 1) {
                     // 检查是否应该停止
                     if (this.shouldStop) {
