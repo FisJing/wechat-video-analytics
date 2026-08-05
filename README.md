@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-14%2B-green.svg)](https://nodejs.org/)
+[![ADB](https://img.shields.io/badge/ADB-automation-orange.svg)](https://developer.android.com/studio)
+[![Baidu OCR](https://img.shields.io/badge/Baidu_OCR-API-blue.svg)](https://cloud.baidu.com/product/ocr)
 
 一个基于Node.js和ADB的微信视频号数据自动抓取系统，支持批量抓取视频数据、Web管理界面、百度OCR识别等功能。
 
